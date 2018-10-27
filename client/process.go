@@ -163,7 +163,7 @@ func parseFundsTx(args []string) (tx protocol.Transaction, err error) {
 			pub1 := string(runes[:64])
 			pub2 := string(runes[64:])
 
-			toPubKey, _ = storage.GetPubKeyFromString(pub1, pub2)
+			toPubKey = storage.GetPubKeyFromString(pub1, pub2)
 		} else {
 			return nil, errors.New(fmt.Sprintf("%v%v", err, fundsTxUsage))
 		}
