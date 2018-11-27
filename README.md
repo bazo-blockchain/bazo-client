@@ -20,10 +20,6 @@ Contents of `configuration.json`:
   "bootstrap_server": {
     "ip": "127.0.0.1",
     "port": "8000"
-  },
-  "multisig_server": {
-    "ip": "127.0.0.1",
-    "port": "8020"
   }
 }
 ```
@@ -118,13 +114,12 @@ Options
 * `--from`: The file to load the sender's private key from
 * `--to`: The file to load the recipient's public key from
 * `--toAddress`: Instead of passing the recipient's address by file with `--to`, you can also directly pass the recipient's address with this option
-* `--multisig`: (optional) The file to load the multisig's private key from.
 
 Examples
 
 ```bash
 bazo-client funds --from myaccount.txt --to recipient.txt --txcount 0 --amount 100
-bazo-client funds --from myaccount.txt --to recipient.txt --txcount 1 --amount 100 --multisig myaccount.txt
+bazo-client funds --from myaccount.txt --to recipient.txt --txcount 1 --amount 100
 bazo-client funds --from myaccount.txt --toAddress b978...<120 byte omitted>...e86ba --txcount 2 --amount 100 --fee 15
 ```
 

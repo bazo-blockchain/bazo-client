@@ -284,14 +284,5 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 		}
 	}
 
-	for _, tx := range network.NonVerifiedTxReq(acc.Address) {
-		if tx.To == acc.Address {
-			put(lastTenTx, ConvertFundsTx(tx, "not verified"))
-		}
-		if tx.From == acc.Address {
-			acc.TxCnt++
-		}
-	}
-
 	return nil
 }

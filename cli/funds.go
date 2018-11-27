@@ -18,7 +18,6 @@ type fundsArgs struct {
 	fromWalletFile	string
 	toWalletFile	string
 	toAddress		string
-	multisigFile	string
 	amount			uint64
 	fee				uint64
 	txcount		    int
@@ -34,7 +33,6 @@ func GetFundsCommand(logger *log.Logger) cli.Command {
 				fromWalletFile: c.String("from"),
 				toWalletFile: 	c.String("to"),
 				toAddress: 		c.String("toAddress"),
-				multisigFile: 	c.String("multisig"),
 				amount: 		c.Uint64("amount"),
 				fee: 			c.Uint64("fee"),
 				txcount:		c.Int("txcount"),
@@ -72,10 +70,6 @@ func GetFundsCommand(logger *log.Logger) cli.Command {
 			cli.IntFlag {
 				Name: 	"txcount",
 				Usage:	"the sender's current transaction counter",
-			},
-			cli.StringFlag {
-				Name: 	"multisig",
-				Usage: 	"load multi-signature server’s private key from `FILE`",
 			},
 		},
 	}
@@ -117,16 +111,6 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 		}
 	}
 
-	var multisigPrivKey *ecdsa.PrivateKey
-	if len(args.multisigFile) > 0 {
-		multisigPrivKey, err = crypto.ExtractECDSAKeyFromFile(args.multisigFile)
-		if err != nil {
-			return err
-		}
-	} else {
-		multisigPrivKey = fromPrivKey
-	}
-
 	fromAddress := crypto.GetAddressFromPubKey(&fromPrivKey.PublicKey)
 	toAddress := crypto.GetAddressFromPubKey(toPubKey)
 
@@ -138,7 +122,6 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 		fromAddress,
 		toAddress,
 		fromPrivKey,
-		multisigPrivKey,
 		nil)
 
 	if err != nil {

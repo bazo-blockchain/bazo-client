@@ -189,17 +189,11 @@ func sendTxEndpoint(w http.ResponseWriter, req *http.Request, txType int) {
 		}
 	case p2p.FUNDSTX_BRDCST:
 		if tx := client.UnsignedFundsTx[txHash]; tx != nil {
-			if tx.Sig1 == [64]byte{} {
-				tx.Sig1 = txSign
-				err = network.SendTx(util.Config.MultisigIpport, tx, p2p.FUNDSTX_BRDCST)
-				if err != nil {
-					delete(client.UnsignedFundsTx, txHash)
-				}
-			} else {
-				tx.Sig2 = txSign
-				err = network.SendTx(util.Config.BootstrapIpport, tx, p2p.FUNDSTX_BRDCST)
-				delete(client.UnsignedFundsTx, txHash)
-			}
+			tx.Sig = txSign
+			err = network.SendTx(util.Config.BootstrapIpport, tx, p2p.FUNDSTX_BRDCST)
+
+			//If tx was successful or not, delete it from map either way. A new tx creation is the only option to repeat.
+			delete(client.UnsignedFundsTx, txHash)
 		} else {
 			logger.Printf("No transaction with hash %x found to sign\n", txHash)
 			SendJsonResponse(w, JsonResponse{http.StatusInternalServerError, fmt.Sprintf("No transaction with hash %x found to sign", txHash), nil})
