@@ -163,7 +163,6 @@ func saveAndLogBlockHeader(blockHeader *protocol.Block) {
 
 func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 	//Get blocks if the Acc address:
-	//* got issued as an Acc
 	//* sent funds
 	//* received funds
 	//* is block's beneficiary
@@ -218,37 +217,6 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 					}
 				}
 			}
-
-			//Check if Account was issued and collect fee
-			//for _, txHash := range block.AccTxData {
-			//	err := network.TxReq(p2p.ACCTX_REQ, txHash)
-			//	if err != nil {
-			//		return err
-			//	}
-			//
-			//	txI, err := network.Fetch(network.AccTxChan)
-			//	if err != nil {
-			//		return err
-			//	}
-			//
-			//	tx := txI.(protocol.Transaction)
-			//	accTx := txI.(*protocol.AccTx)
-			//
-			//	if accTx.PubKey == acc.Address || block.Beneficiary == pubKeyHash {
-			//		//Validate tx
-			//		if err := validateTx(block, tx, txHash); err != nil {
-			//			return err
-			//		}
-			//
-			//		if accTx.PubKey == acc.Address {
-			//			acc.IsCreated = true
-			//		}
-			//
-			//		if block.Beneficiary == pubKeyHash {
-			//			acc.Balance += accTx.Fee
-			//		}
-			//	}
-			//}
 
 			//Update config parameters and collect fee
 			for _, txHash := range block.ConfigTxData {
