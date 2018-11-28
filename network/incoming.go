@@ -13,7 +13,7 @@ var (
 	BlockChan             = make(chan interface{})
 	BlockHeaderChan       = make(chan interface{})
 	FundsTxChan           = make(chan interface{})
-	AccTxChan             = make(chan interface{})
+	ContractTxChan             = make(chan interface{})
 	ConfigTxChan          = make(chan interface{})
 	StakeTxChan           = make(chan interface{})
 	AccChan               = make(chan interface{})

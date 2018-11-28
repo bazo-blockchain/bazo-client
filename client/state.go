@@ -15,7 +15,7 @@ var (
 
 	activeParameters miner.Parameters
 
-	UnsignedAccTx    = make(map[[32]byte]*protocol.AccTx)
+	UnsignedContractTx    = make(map[[32]byte]*protocol.ContractTx)
 	UnsignedConfigTx = make(map[[32]byte]*protocol.ConfigTx)
 	UnsignedFundsTx  = make(map[[32]byte]*protocol.FundsTx)
 )

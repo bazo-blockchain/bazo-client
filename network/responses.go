@@ -39,12 +39,12 @@ func txRes(p *peer, payload []byte, txType uint8) {
 		}
 		FundsTxChan <- fundsTx
 	case p2p.ACCTX_RES:
-		var accTx *protocol.AccTx
-		accTx = accTx.Decode(payload)
-		if accTx == nil {
+		var contractTx *protocol.ContractTx
+		contractTx = contractTx.Decode(payload)
+		if contractTx == nil {
 			return
 		}
-		AccTxChan <- accTx
+		ContractTxChan <- contractTx
 	case p2p.CONFIGTX_RES:
 		var configTx *protocol.ConfigTx
 		configTx = configTx.Decode(payload)
