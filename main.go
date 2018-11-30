@@ -11,7 +11,7 @@ import (
 	"os"
 )
 
-func main() {
+func main() { // test commit for new sharding branch
 	p2p.InitLogging()
 	client.InitLogging()
 	logger := util.InitLogger()
