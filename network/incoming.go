@@ -13,7 +13,7 @@ var (
 	BlockChan             = make(chan interface{})
 	BlockHeaderChan       = make(chan interface{})
 	FundsTxChan           = make(chan interface{})
-	ContractTxChan             = make(chan interface{})
+	ContractTxChan        = make(chan interface{})
 	ConfigTxChan          = make(chan interface{})
 	StakeTxChan           = make(chan interface{})
 	AccChan               = make(chan interface{})
@@ -38,8 +38,8 @@ func processIncomingMsg(p *peer, header *p2p.Header, payload []byte) {
 		blockHeaderRes(p, payload)
 	case p2p.FUNDSTX_RES:
 		txRes(p, payload, p2p.FUNDSTX_RES)
-	case p2p.ACCTX_RES:
-		txRes(p, payload, p2p.ACCTX_RES)
+	case p2p.CONTRACTTX_RES:
+		txRes(p, payload, p2p.CONTRACTTX_RES)
 	case p2p.CONFIGTX_RES:
 		txRes(p, payload, p2p.CONFIGTX_RES)
 	case p2p.STAKETX_RES:
