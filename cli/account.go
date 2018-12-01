@@ -19,6 +19,8 @@ func GetAccountCommand(logger *log.Logger) cli.Command {
 		Name:	"account",
 		Usage:	"account management",
 		Action: func(c *cli.Context) error {
+			client.Init()
+
 			args := &accountArgs{
 				address:	c.String("address"),
 				walletFile:	c.String("wallet"),

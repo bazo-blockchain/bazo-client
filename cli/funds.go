@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"github.com/bazo-blockchain/bazo-client/client"
 	"github.com/bazo-blockchain/bazo-client/network"
 	"github.com/bazo-blockchain/bazo-client/util"
 	"github.com/bazo-blockchain/bazo-miner/crypto"
@@ -28,6 +29,8 @@ func GetFundsCommand(logger *log.Logger) cli.Command {
 		Name:	"funds",
 		Usage:	"send funds from one account to another",
 		Action:	func(c *cli.Context) error {
+			client.Init()
+
 			args := &fundsArgs{
 				header: 		c.Int("header"),
 				fromWalletFile: c.String("from"),

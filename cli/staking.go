@@ -3,6 +3,7 @@ package cli
 import (
 	"crypto/rsa"
 	"errors"
+	"github.com/bazo-blockchain/bazo-client/client"
 	"github.com/bazo-blockchain/bazo-client/network"
 	"github.com/bazo-blockchain/bazo-client/util"
 	"github.com/bazo-blockchain/bazo-miner/crypto"
@@ -47,6 +48,8 @@ func GetStakingCommand(logger *log.Logger) cli.Command {
 				Name: "enable",
 				Usage: "join the pool of validators",
 				Action:	func(c *cli.Context) error {
+					client.Init()
+
 					args := parseStakingArgs(c)
 					args.stakingValue = true
 					return toggleStaking(args, logger)
@@ -66,6 +69,8 @@ func GetStakingCommand(logger *log.Logger) cli.Command {
 				Name: "disable",
 				Usage: "leave the pool of validators",
 				Action:	func(c *cli.Context) error {
+					client.Init()
+
 					args := parseStakingArgs(c)
 					args.stakingValue = false
 					return toggleStaking(args, logger)

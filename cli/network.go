@@ -2,6 +2,7 @@ package cli
 
 import (
 	"errors"
+	"github.com/bazo-blockchain/bazo-client/client"
 	"github.com/bazo-blockchain/bazo-client/network"
 	"github.com/bazo-blockchain/bazo-client/util"
 	"github.com/bazo-blockchain/bazo-miner/crypto"
@@ -39,6 +40,8 @@ func GetNetworkCommand(logger *log.Logger) cli.Command {
 		Name:	"network",
 		Usage:	"configure the network",
 		Action:	func(c *cli.Context) error {
+			client.Init()
+
 			optionsSetByUser := 0
 			for _, option := range options {
 				if !c.IsSet(option.name) { continue }
