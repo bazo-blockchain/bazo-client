@@ -29,11 +29,6 @@ type Configuration struct {
 		Ip   string `json:"ip"`
 		Port string `json:"port"`
 	} `json:"bootstrap_server"`
-	MultisigIpport string
-	Multisigserver struct {
-		Ip   string `json:"ip"`
-		Port string `json:"port"`
-	} `json:"multisig_server"`
 }
 
 func LoadConfiguration() (config Configuration) {
@@ -47,6 +42,5 @@ func LoadConfiguration() (config Configuration) {
 
 	config.ThisIpport = config.Thisclient.Ip + ":" + config.Thisclient.Port
 	config.BootstrapIpport = config.Bootstrapserver.Ip + ":" + config.Bootstrapserver.Port
-	config.MultisigIpport = config.Multisigserver.Ip + ":" + config.Multisigserver.Port
 	return config
 }

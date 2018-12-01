@@ -15,7 +15,7 @@ var (
 
 	activeParameters miner.Parameters
 
-	UnsignedAccTx    = make(map[[32]byte]*protocol.AccTx)
+	UnsignedContractTx    = make(map[[32]byte]*protocol.ContractTx)
 	UnsignedConfigTx = make(map[[32]byte]*protocol.ConfigTx)
 	UnsignedFundsTx  = make(map[[32]byte]*protocol.FundsTx)
 )
@@ -162,15 +162,13 @@ func saveAndLogBlockHeader(blockHeader *protocol.Block) {
 }
 
 func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
-	pubKeyHash := protocol.SerializeHashContent(acc.Address)
 	//Get blocks if the Acc address:
-	//* got issued as an Acc
 	//* sent funds
 	//* received funds
 	//* is block's beneficiary
 	//* nr of configTx in block is > 0 (in order to maintain params in light-client)
 
-	relevantHeadersBeneficiary, relevantHeadersConfigBF := getRelevantBlockHeaders(pubKeyHash)
+	relevantHeadersBeneficiary, relevantHeadersConfigBF := getRelevantBlockHeaders(acc.Address)
 
 	acc.Balance += activeParameters.Block_reward * uint64(len(relevantHeadersBeneficiary))
 
@@ -192,13 +190,13 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 				tx := txI.(protocol.Transaction)
 				fundsTx := txI.(*protocol.FundsTx)
 
-				if fundsTx.From == pubKeyHash || fundsTx.To == pubKeyHash || block.Beneficiary == pubKeyHash {
+				if fundsTx.From == acc.Address || fundsTx.To == acc.Address || block.Beneficiary == acc.Address {
 					//Validate tx
 					if err := validateTx(block, tx, txHash); err != nil {
 						return err
 					}
 
-					if fundsTx.From == pubKeyHash {
+					if fundsTx.From == acc.Address {
 						//If Acc is no root, balance funds
 						if !acc.IsRoot {
 							acc.Balance -= fundsTx.Amount
@@ -208,48 +206,17 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 						acc.TxCnt += 1
 					}
 
-					if fundsTx.To == pubKeyHash {
+					if fundsTx.To == acc.Address {
 						acc.Balance += fundsTx.Amount
 
 						put(lastTenTx, ConvertFundsTx(fundsTx, "verified"))
 					}
 
-					if block.Beneficiary == pubKeyHash {
+					if block.Beneficiary == acc.Address {
 						acc.Balance += fundsTx.Fee
 					}
 				}
 			}
-
-			//Check if Account was issued and collect fee
-			//for _, txHash := range block.AccTxData {
-			//	err := network.TxReq(p2p.ACCTX_REQ, txHash)
-			//	if err != nil {
-			//		return err
-			//	}
-			//
-			//	txI, err := network.Fetch(network.AccTxChan)
-			//	if err != nil {
-			//		return err
-			//	}
-			//
-			//	tx := txI.(protocol.Transaction)
-			//	accTx := txI.(*protocol.AccTx)
-			//
-			//	if accTx.PubKey == acc.Address || block.Beneficiary == pubKeyHash {
-			//		//Validate tx
-			//		if err := validateTx(block, tx, txHash); err != nil {
-			//			return err
-			//		}
-			//
-			//		if accTx.PubKey == acc.Address {
-			//			acc.IsCreated = true
-			//		}
-			//
-			//		if block.Beneficiary == pubKeyHash {
-			//			acc.Balance += accTx.Fee
-			//		}
-			//	}
-			//}
 
 			//Update config parameters and collect fee
 			for _, txHash := range block.ConfigTxData {
@@ -268,7 +235,7 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 
 				configTxSlice := []*protocol.ConfigTx{configTx}
 
-				if block.Beneficiary == pubKeyHash {
+				if block.Beneficiary == acc.Address {
 					//Validate tx
 					if err := validateTx(block, tx, txHash); err != nil {
 						return err
@@ -282,16 +249,6 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 
 			//TODO stakeTx
 
-		}
-	}
-
-	addressHash := protocol.SerializeHashContent(acc.Address)
-	for _, tx := range network.NonVerifiedTxReq(addressHash) {
-		if tx.To == addressHash {
-			put(lastTenTx, ConvertFundsTx(tx, "not verified"))
-		}
-		if tx.From == addressHash {
-			acc.TxCnt++
 		}
 	}
 

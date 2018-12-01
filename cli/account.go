@@ -1,56 +1,87 @@
 package cli
 
 import (
-	"fmt"
-	"github.com/bazo-blockchain/bazo-client/network"
-	"github.com/bazo-blockchain/bazo-client/util"
-	"github.com/bazo-blockchain/bazo-miner/p2p"
-	"github.com/bazo-blockchain/bazo-miner/protocol"
+	"errors"
+	"github.com/bazo-blockchain/bazo-client/client"
+	"github.com/bazo-blockchain/bazo-miner/crypto"
 	"github.com/urfave/cli"
 	"log"
+	"math/big"
 )
 
-var (
-	headerFlag = cli.IntFlag {
-		Name: 	"header",
-		Usage: 	"header flag",
-		Value:	0,
-	}
-
-	feeFlag = cli.Uint64Flag {
-		Name: 	"fee",
-		Usage:	"specify the fee",
-		Value:	1,
-	}
-
-	rootkeyFlag = cli.StringFlag {
-		Name: 	"rootwallet",
-		Usage: 	"load root's public private key from `FILE`",
-	}
-)
+type accountArgs struct {
+	address		string
+	walletFile	string
+}
 
 func GetAccountCommand(logger *log.Logger) cli.Command {
 	return cli.Command {
 		Name:	"account",
 		Usage:	"account management",
-		Subcommands: []cli.Command {
-			getCheckAccountCommand(logger),
-			getCreateAccountCommand(logger),
-			getAddAccountCommand(logger),
+		Action: func(c *cli.Context) error {
+			client.Init()
+
+			args := &accountArgs{
+				address:	c.String("address"),
+				walletFile:	c.String("wallet"),
+			}
+
+			return checkAccount(args, logger)
+		},
+		Flags: []cli.Flag {
+			cli.StringFlag {
+				Name: 	"address",
+				Usage: 	"the account's 128 byte address",
+			},
+			cli.StringFlag {
+				Name: 	"wallet",
+				Usage: 	"load the account's 128 byte address from `FILE`",
+				Value: 	"wallet.txt",
+			},
 		},
 	}
 }
 
+func checkAccount(args *accountArgs, logger *log.Logger) error {
+	err := args.ValidateInput()
+	if err != nil {
+		return err
+	}
 
+	var address [64]byte
+	if len(args.address) == 128 {
+		newPubInt, _ := new(big.Int).SetString(args.address, 16)
+		copy(address[:], newPubInt.Bytes())
+	} else {
+		privKey, err := crypto.ExtractECDSAKeyFromFile(args.walletFile)
+		if err != nil {
+			logger.Printf("%v\n", err)
+			return err
+		}
 
-func sendAccountTx(tx protocol.Transaction, logger *log.Logger) error {
-	fmt.Printf("chash: %x\n", tx.Hash())
+		address = crypto.GetAddressFromPubKey(&privKey.PublicKey)
+	}
 
-	if err := network.SendTx(util.Config.BootstrapIpport, tx, p2p.ACCTX_BRDCST); err != nil {
-		logger.Printf("%v\n", err)
+	logger.Printf("My address: %x\n", address)
+
+	acc, _, err := client.CheckAccount(address)
+	if err != nil {
+		logger.Println(err)
 		return err
 	} else {
-		logger.Printf("Transaction successfully sent to network:\nTxHash: %x%v", tx.Hash(), tx)
+		logger.Printf(acc.String())
+	}
+
+	return nil
+}
+
+func (args accountArgs) ValidateInput() error {
+	if len(args.address) == 0 && len(args.walletFile) == 0 {
+		return errors.New("argument missing: address or wallet")
+	}
+
+	if len(args.walletFile) == 0 && len(args.address) != 128 {
+		return errors.New("invalid argument: address")
 	}
 
 	return nil

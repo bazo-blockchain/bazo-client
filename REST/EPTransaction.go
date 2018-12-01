@@ -28,7 +28,7 @@ type Content struct {
 	Detail interface{} `json:"detail,omitempty"`
 }
 
-func CreateAccTxEndpoint(w http.ResponseWriter, req *http.Request) {
+func CreateContractTxEndpoint(w http.ResponseWriter, req *http.Request) {
 	logger.Println("Incoming createAcc request")
 
 	params := mux.Vars(req)
@@ -36,7 +36,7 @@ func CreateAccTxEndpoint(w http.ResponseWriter, req *http.Request) {
 	header, _ := strconv.Atoi(params["header"])
 	fee, _ := strconv.Atoi(params["fee"])
 
-	tx := protocol.AccTx{
+	tx := protocol.ContractTx{
 		Header: byte(header),
 		Fee:    uint64(fee),
 	}
@@ -49,7 +49,7 @@ func CreateAccTxEndpoint(w http.ResponseWriter, req *http.Request) {
 	copy(tx.PubKey[32:], newAccAddress.PublicKey.Y.Bytes())
 
 	txHash := tx.Hash()
-	client.UnsignedAccTx[txHash] = &tx
+	client.UnsignedContractTx[txHash] = &tx
 
 	var content []Content
 	content = append(content, Content{"PubKey1", hex.EncodeToString(tx.PubKey[:32])})
@@ -57,10 +57,10 @@ func CreateAccTxEndpoint(w http.ResponseWriter, req *http.Request) {
 	content = append(content, Content{"PrivKey", hex.EncodeToString(newAccAddress.D.Bytes())})
 	content = append(content, Content{"TxHash", hex.EncodeToString(txHash[:])})
 
-	SendJsonResponse(w, JsonResponse{http.StatusOK, "AccTx successfully created.", content})
+	SendJsonResponse(w, JsonResponse{http.StatusOK, "ContractTx successfully created.", content})
 }
 
-func CreateAccTxEndpointWithPubKey(w http.ResponseWriter, req *http.Request) {
+func CreateContractTxEndpointWithPubKey(w http.ResponseWriter, req *http.Request) {
 	logger.Println("Incoming createAcc request")
 
 	params := mux.Vars(req)
@@ -68,7 +68,7 @@ func CreateAccTxEndpointWithPubKey(w http.ResponseWriter, req *http.Request) {
 	header, _ := strconv.Atoi(params["header"])
 	fee, _ := strconv.Atoi(params["fee"])
 
-	tx := protocol.AccTx{
+	tx := protocol.ContractTx{
 		Header: byte(header),
 		Fee:    uint64(fee),
 	}
@@ -79,11 +79,11 @@ func CreateAccTxEndpointWithPubKey(w http.ResponseWriter, req *http.Request) {
 	copy(tx.Issuer[:], issuerInt.Bytes())
 
 	txHash := tx.Hash()
-	client.UnsignedAccTx[txHash] = &tx
+	client.UnsignedContractTx[txHash] = &tx
 
 	var content []Content
 	content = append(content, Content{"TxHash", hex.EncodeToString(txHash[:])})
-	SendJsonResponse(w, JsonResponse{http.StatusOK, "AccTx successfully created.", content})
+	SendJsonResponse(w, JsonResponse{http.StatusOK, "ContractTx successfully created.", content})
 }
 
 func CreateConfigTxEndpoint(w http.ResponseWriter, req *http.Request) {
@@ -137,8 +137,8 @@ func CreateFundsTxEndpoint(w http.ResponseWriter, req *http.Request) {
 		Amount: uint64(amount),
 		Fee:    uint64(fee),
 		TxCnt:  uint32(txCnt),
-		From:   protocol.SerializeHashContent(fromPub),
-		To:     protocol.SerializeHashContent(toPub),
+		From:   fromPub,
+		To:     toPub,
 	}
 
 	txHash := tx.Hash()
@@ -166,7 +166,7 @@ func sendTxEndpoint(w http.ResponseWriter, req *http.Request, txType int) {
 
 	switch txType {
 	case p2p.ACCTX_BRDCST:
-		if tx := client.UnsignedAccTx[txHash]; tx != nil {
+		if tx := client.UnsignedContractTx[txHash]; tx != nil {
 			tx.Sig = txSign
 			err = network.SendTx(util.Config.BootstrapIpport, tx, p2p.ACCTX_BRDCST)
 
@@ -189,17 +189,11 @@ func sendTxEndpoint(w http.ResponseWriter, req *http.Request, txType int) {
 		}
 	case p2p.FUNDSTX_BRDCST:
 		if tx := client.UnsignedFundsTx[txHash]; tx != nil {
-			if tx.Sig1 == [64]byte{} {
-				tx.Sig1 = txSign
-				err = network.SendTx(util.Config.MultisigIpport, tx, p2p.FUNDSTX_BRDCST)
-				if err != nil {
-					delete(client.UnsignedFundsTx, txHash)
-				}
-			} else {
-				tx.Sig2 = txSign
-				err = network.SendTx(util.Config.BootstrapIpport, tx, p2p.FUNDSTX_BRDCST)
-				delete(client.UnsignedFundsTx, txHash)
-			}
+			tx.Sig = txSign
+			err = network.SendTx(util.Config.BootstrapIpport, tx, p2p.FUNDSTX_BRDCST)
+
+			//If tx was successful or not, delete it from map either way. A new tx creation is the only option to repeat.
+			delete(client.UnsignedFundsTx, txHash)
 		} else {
 			logger.Printf("No transaction with hash %x found to sign\n", txHash)
 			SendJsonResponse(w, JsonResponse{http.StatusInternalServerError, fmt.Sprintf("No transaction with hash %x found to sign", txHash), nil})
@@ -215,7 +209,7 @@ func sendTxEndpoint(w http.ResponseWriter, req *http.Request, txType int) {
 	}
 }
 
-func SendAccTxEndpoint(w http.ResponseWriter, req *http.Request) {
+func SendContractTxEndpoint(w http.ResponseWriter, req *http.Request) {
 	sendTxEndpoint(w, req, p2p.ACCTX_BRDCST)
 }
 

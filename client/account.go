@@ -37,7 +37,6 @@ func GetAccount(address [64]byte) (*Account, []*FundsTxJson, error) {
 			account.IsCreated = true
 			account.IsStaking = acc.IsStaking
 
-			//If Acc is Root in the bazo network state, we do not check for accTx, else we check
 			network.AccReq(true, protocol.SerializeHashContent(account.Address))
 			if rootAccI, _ := network.Fetch(network.AccChan); rootAccI != nil {
 				if rootAcc := rootAccI.(*protocol.Account); rootAcc != nil {
@@ -61,7 +60,6 @@ func GetAccount(address [64]byte) (*Account, []*FundsTxJson, error) {
 		return nil, nil, errors.New(fmt.Sprintf("Could not calculate state of account %x: %v\n", account.Address[:8], err))
 	}
 
-	//No accTx exists for this account since it is the initial root account
 	//Add the initial root's balance
 	//if account.IsCreated == false && account.IsRoot == true {
 	//	account.IsCreated = true
