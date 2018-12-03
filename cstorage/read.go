@@ -1,39 +1,47 @@
 package cstorage
 
 import (
+	"errors"
+	"fmt"
 	"github.com/bazo-blockchain/bazo-miner/protocol"
 	"github.com/boltdb/bolt"
 )
 
-func ReadBlockHeader(hash [32]byte) (header *protocol.Block) {
-	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("blockheaders"))
+func ReadBlockHeader(hash [32]byte) (header *protocol.Block, err error) {
+	err = db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BLOCKHEADERS_BUCKET))
 		encodedHeader := b.Get(hash[:])
 		header = header.Decode(encodedHeader)
-
 		return nil
 	})
 
-	if header == nil {
-		return nil
+	if err != nil {
+		return nil, err
 	}
 
-	return header
+	if header == nil {
+		return nil, errors.New(fmt.Sprintf("header not found for hash %x\n", hash))
+	}
+
+	return header, nil
 }
 
-func ReadLastBlockHeader() (header *protocol.Block) {
-	db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("lastblockheader"))
+func ReadLastBlockHeader() (header *protocol.Block, err error) {
+	err = db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(LASTBLOCKHEADER_BUCKET))
 		cb := b.Cursor()
 		_, encodedHeader := cb.First()
 		header = header.Decode(encodedHeader)
-
 		return nil
 	})
 
-	if header == nil {
-		return nil
+	if err != nil {
+		return nil, err
 	}
 
-	return header
+	if header == nil {
+		return nil, errors.New("last block header not found")
+	}
+
+	return header, nil
 }
