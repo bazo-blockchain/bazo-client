@@ -21,36 +21,23 @@ var (
 )
 
 //Update allBlockHeaders to the latest header. Start listening to broadcasted headers after.
-func Sync() error {
-	err := loadBlockHeaders()
-	if err != nil {
-		return err
-	}
-
+func Sync() {
+	loadBlockHeaders()
 	go incomingBlockHeaders()
-
-	return nil
 }
 
-func loadBlockHeaders() error {
+func loadBlockHeaders() {
+	var last *protocol.Block
 
 	//youngest = fetchBlockHeader(nil)
-	last, err := cstorage.ReadLastBlockHeader()
-	if err != nil || last == nil {
-		return err
+	if last, _ = cstorage.ReadLastBlockHeader(); last != nil {
+		var loaded []*protocol.Block
+		loaded = loadDB(last, [32]byte{}, loaded)
+		blockHeaders = append(blockHeaders, loaded...)
 	}
-
-	loaded, err := loadDB(last, [32]byte{}, []*protocol.Block{})
-	if err != nil {
-		return err
-	}
-
-	blockHeaders = append(blockHeaders, loaded...)
 
 	//The client is up to date with the network and can start listening for incoming headers.
 	network.Uptodate = true
-
-	return nil
 }
 
 func incomingBlockHeaders() {
@@ -127,17 +114,15 @@ func fetchBlockHeader(blockHash []byte) (blockHeader *protocol.Block) {
 	return blockHeader
 }
 
-func loadDB(last *protocol.Block, abort [32]byte, loaded []*protocol.Block) ([]*protocol.Block, error) {
+func loadDB(last *protocol.Block, abort [32]byte, loaded []*protocol.Block) []*protocol.Block {
+	var ancestor *protocol.Block
+
 	if last.PrevHash != abort {
-		ancestor, err := cstorage.ReadBlockHeader(last.PrevHash)
-		if err != nil {
-			return nil, err
+		if ancestor, _ = cstorage.ReadBlockHeader(last.PrevHash); ancestor == nil {
+			logger.Fatal()
 		}
 
-		loaded, err = loadDB(ancestor, abort, loaded)
-		if err != nil {
-			return nil, err
-		}
+		loaded = loadDB(ancestor, abort, loaded)
 	}
 
 	logger.Printf("Header %x with height %v loaded from DB\n",
@@ -146,7 +131,7 @@ func loadDB(last *protocol.Block, abort [32]byte, loaded []*protocol.Block) ([]*
 
 	loaded = append(loaded, last)
 
-	return loaded, nil
+	return loaded
 }
 
 func loadNetwork(last *protocol.Block, abort [32]byte, loaded []*protocol.Block) []*protocol.Block {
@@ -245,14 +230,12 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 						acc.TxCnt += 1
 					}
 
-					// Check if account is recipient of a transaction
 					if fundsTx.To == acc.Address {
 						acc.Balance += fundsTx.Amount
 
 						put(lastTenTx, ConvertFundsTx(fundsTx, "verified"))
 					}
 
-					// Check if account is beneficiary of a block
 					if block.Beneficiary == acc.Address {
 						acc.Balance += fundsTx.Fee
 					}

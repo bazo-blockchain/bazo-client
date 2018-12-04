@@ -12,20 +12,14 @@ var (
 	logger     *log.Logger
 )
 
-func Init() error {
+func Init() {
 	p2p.InitLogging()
 	logger = util.InitLogger()
 
 	util.Config = util.LoadConfiguration()
 
 	network.Init()
-	err := cstorage.Init("client.db")
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	cstorage.Init("client.db")
 }
 
 func put(slice []*FundsTxJson, tx *FundsTxJson) {
