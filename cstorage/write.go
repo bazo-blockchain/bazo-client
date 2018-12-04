@@ -30,3 +30,10 @@ func WriteLastBlockHeader(header *protocol.Block) (err error) {
 		return b.Put(header.Hash[:], header.EncodeHeader())
 	})
 }
+
+func WriteMerkleProof(proof *protocol.MerkleProof) (err error) {
+	return db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(MERKLEPROOF_BUCKET))
+		return b.Put(proof.Hash()[:], proof.Encode())
+	})
+}

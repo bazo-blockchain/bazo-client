@@ -45,3 +45,36 @@ func ReadLastBlockHeader() (header *protocol.Block, err error) {
 
 	return header, nil
 }
+
+func ReadMerkleProof(hash [32]byte) (proof *protocol.MerkleProof, err error) {
+	err = db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(MERKLEPROOF_BUCKET))
+		encdoedProof := b.Get(hash[:])
+		proof = proof.Decode(encdoedProof)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return proof, nil
+}
+
+func ReadMerkleProofs() (proofs []*protocol.MerkleProof, err error) {
+	err = db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(MERKLEPROOF_BUCKET))
+
+		return b.ForEach(func(k, v []byte) error {
+			var proof *protocol.MerkleProof
+			proofs = append(proofs, proof.Decode(v))
+			return nil
+		})
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return proofs, nil
+}

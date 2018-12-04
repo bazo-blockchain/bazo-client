@@ -190,6 +190,8 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 	relevantBlocks, err := getRelevantBlocks(relevantHeadersConfigBF)
 	for _, block := range relevantBlocks {
 		if block != nil {
+			merkleTree := protocol.BuildMerkleTree(block)
+
 			//Balance funds and collect fee
 			for _, txHash := range block.FundsTxData {
 				err := network.TxReq(p2p.FUNDSTX_REQ, txHash)
@@ -208,6 +210,27 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 				if fundsTx.From == acc.Address || fundsTx.To == acc.Address || block.Beneficiary == acc.Address {
 					//Validate tx
 					if err := validateTx(block, tx, txHash); err != nil {
+						return err
+					}
+
+					mhashes, err := merkleTree.MerkleProof(fundsTx.Hash())
+					if err != nil {
+						return err
+					}
+
+					proof := protocol.NewMerkleProof(
+						block.Height,
+						mhashes,
+						fundsTx.Header,
+						fundsTx.Amount,
+						fundsTx.Fee,
+						fundsTx.TxCnt,
+						fundsTx.From,
+						fundsTx.To,
+						fundsTx.Data)
+
+					err = cstorage.WriteMerkleProof(&proof)
+					if err != nil {
 						return err
 					}
 

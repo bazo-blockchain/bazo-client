@@ -18,6 +18,7 @@ const (
 	ERROR_MSG = "Initiate storage aborted: "
 	BLOCKHEADERS_BUCKET = "blockheaders"
 	LASTBLOCKHEADER_BUCKET = "lastblockheader"
+	MERKLEPROOF_BUCKET = "merkleproofs"
 )
 
 //Entry function for the storage package
@@ -27,6 +28,7 @@ func Init(dbname string) (err error) {
 	Buckets = []string {
 		BLOCKHEADERS_BUCKET,
 		LASTBLOCKHEADER_BUCKET,
+		MERKLEPROOF_BUCKET,
 	}
 
 	db, err = bolt.Open(dbname, 0600, &bolt.Options{Timeout: 5 * time.Second})
