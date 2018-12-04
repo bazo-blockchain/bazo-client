@@ -11,6 +11,7 @@ func GetRestCommand() cli.Command {
 		Name:	"rest",
 		Usage:	"start the REST service",
 		Action:	func(c *cli.Context) error {
+			client.Init()
 			client.Sync()
 			REST.Init()
 			return nil
