@@ -34,6 +34,7 @@ func WriteLastBlockHeader(header *protocol.Block) (err error) {
 func WriteMerkleProof(proof *protocol.MerkleProof) (err error) {
 	return db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(MERKLEPROOF_BUCKET))
-		return b.Put(proof.Hash()[:], proof.Encode())
+		key := proof.Hash()
+		return b.Put(key[:], proof.Encode())
 	})
 }
