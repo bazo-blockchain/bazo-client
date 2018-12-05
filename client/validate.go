@@ -32,9 +32,9 @@ func validateTx(block *protocol.Block, tx protocol.Transaction, txHash [32]byte)
 	for i := 0; i < len(nodes); i += 2 {
 		var parentHash [32]byte
 		concatHash := append(leafHash[:], nodes[i][:]...)
-		if parentHash = protocol.SerializeHashContent(concatHash); parentHash != nodes[i+1] {
+		if parentHash = protocol.MTHash(concatHash); parentHash != nodes[i+1] {
 			concatHash = append(nodes[i][:], leafHash[:]...)
-			if parentHash = protocol.SerializeHashContent(concatHash); parentHash != nodes[i+1] {
+			if parentHash = protocol.MTHash(concatHash); parentHash != nodes[i+1] {
 				valid = false
 			}
 		}

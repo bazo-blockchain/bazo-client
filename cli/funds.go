@@ -32,7 +32,6 @@ func GetFundsCommand(logger *log.Logger) cli.Command {
 		Usage:	"send funds from one account to another",
 		Action:	func(c *cli.Context) error {
 			client.Init()
-			client.Sync()
 
 			args := &fundsArgs{
 				header: 		c.Int("header"),

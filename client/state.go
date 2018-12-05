@@ -219,6 +219,8 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 						return err
 					}
 
+					logger.Printf("Merkle proof written to client storage for tx at block height %v", block.Height)
+
 					// Check if account is sender of a transaction
 					if fundsTx.From == acc.Address {
 						//If Acc is no root, balance funds
