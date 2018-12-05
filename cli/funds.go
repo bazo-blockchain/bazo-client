@@ -120,7 +120,6 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 	fromAddress := crypto.GetAddressFromPubKey(&fromPrivKey.PublicKey)
 	toAddress := crypto.GetAddressFromPubKey(toPubKey)
 
-	scp := protocol.NewSCP()
 	proofs, err := cstorage.ReadMerkleProofs()
 	sort.Slice(proofs, func(i, j int) bool {
 		return proofs[i].Height > proofs[j].Height
@@ -141,7 +140,7 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 		return err
 	}
 
-	tx.Proof = &scp
+	tx.Proofs = proofs
 
 	if err := network.SendTx(util.Config.BootstrapIpport, tx, p2p.FUNDSTX_BRDCST); err != nil {
 		logger.Printf("%v\n", err)
