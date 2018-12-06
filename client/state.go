@@ -174,108 +174,137 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 
 	relevantBlocks, err := getRelevantBlocks(relevantHeadersConfigBF)
 	for _, block := range relevantBlocks {
-		if block != nil {
-			merkleTree := protocol.BuildMerkleTree(block)
-
-			//Balance funds and collect fee
-			for _, txHash := range block.FundsTxData {
-				err := network.TxReq(p2p.FUNDSTX_REQ, txHash)
-				if err != nil {
-					return err
-				}
-
-				txI, err := network.Fetch(network.FundsTxChan)
-				if err != nil {
-					return err
-				}
-
-				tx := txI.(protocol.Transaction)
-				fundsTx := txI.(*protocol.FundsTx)
-
-				if fundsTx.From == acc.Address || fundsTx.To == acc.Address || block.Beneficiary == acc.Address {
-					//Validate tx
-					if err := validateTx(block, tx, txHash); err != nil {
-						return err
-					}
-
-					mhashes, err := merkleTree.MerkleProof(fundsTx.Hash())
-					if err != nil {
-						return err
-					}
-
-					proof := protocol.NewMerkleProof(
-						block.Height,
-						mhashes,
-						fundsTx.Header,
-						fundsTx.Amount,
-						fundsTx.Fee,
-						fundsTx.TxCnt,
-						fundsTx.From,
-						fundsTx.To,
-						fundsTx.Data)
-
-					err = cstorage.WriteMerkleProof(&proof)
-					if err != nil {
-						return err
-					}
-
-					logger.Printf("Merkle proof written to client storage for tx at block height %v", block.Height)
-
-					// Check if account is sender of a transaction
-					if fundsTx.From == acc.Address {
-						//If Acc is no root, balance funds
-						if !acc.IsRoot {
-							acc.Balance -= fundsTx.Amount
-							acc.Balance -= fundsTx.Fee
-						}
-
-						acc.TxCnt += 1
-					}
-
-					if fundsTx.To == acc.Address {
-						acc.Balance += fundsTx.Amount
-
-						put(lastTenTx, ConvertFundsTx(fundsTx, "verified"))
-					}
-
-					if block.Beneficiary == acc.Address {
-						acc.Balance += fundsTx.Fee
-					}
-				}
-			}
-
-			//Update config parameters and collect fee
-			for _, txHash := range block.ConfigTxData {
-				err := network.TxReq(p2p.CONFIGTX_REQ, txHash)
-				if err != nil {
-					return err
-				}
-
-				txI, err := network.Fetch(network.ConfigTxChan)
-				if err != nil {
-					return err
-				}
-
-				tx := txI.(protocol.Transaction)
-				configTx := txI.(*protocol.ConfigTx)
-
-				configTxSlice := []*protocol.ConfigTx{configTx}
-
-				if block.Beneficiary == acc.Address {
-					//Validate tx
-					if err := validateTx(block, tx, txHash); err != nil {
-						return err
-					}
-
-					acc.Balance += configTx.Fee
-				}
-
-				miner.CheckAndChangeParameters(&activeParameters, &configTxSlice)
-			}
-
-			//TODO stakeTx
-
+		if block == nil {
+			continue
 		}
+
+		err = updateConfigParameters(block)
+		if err != nil {
+			return err
+		}
+
+		// Check if bloomfilter returns false, if yes, the block has nothing related to account's address
+		if !block.BloomFilter.Test(acc.Address[:]) {
+			continue
+		}
+
+		fundsTxs, err := requestFundsTx(block)
+
+		// Check if it's a block with a Bloomfilter that returns false positive
+		if len(fundsTxs) == 0 && block.Beneficiary != acc.Address {
+			
+		}
+
+		err = balanceFunds(fundsTxs, block, acc, lastTenTx)
+		if err != nil {
+			return err
+		}
+
+		if block.Beneficiary == acc.Address {
+			acc.Balance += block.TotalFees
+			// TODO @rmnblm create merkle proof for beneficiary, but how?
+		}
+	}
+
+	return nil
+}
+
+func requestFundsTx(block *protocol.Block) (fundsTxs []*protocol.FundsTx, err error) {
+	for _, txHash := range block.FundsTxData {
+		err := network.TxReq(p2p.FUNDSTX_REQ, txHash)
+		if err != nil {
+			return nil, err
+		}
+
+		txI, err := network.Fetch(network.FundsTxChan)
+		if err != nil {
+			return nil, err
+		}
+
+		fundsTx := txI.(*protocol.FundsTx)
+		fundsTxs = append(fundsTxs, fundsTx)
+	}
+
+	return fundsTxs, nil
+}
+
+func balanceFunds(fundsTxs []*protocol.FundsTx, block *protocol.Block, acc *Account, lastTenTx []*FundsTxJson) error {
+	merkleTree := protocol.BuildMerkleTree(block)
+
+	for _, fundsTx := range fundsTxs {
+		txHash := fundsTx.Hash()
+
+		if fundsTx.From == acc.Address || fundsTx.To == acc.Address {
+			//Validate tx
+			if err := validateTx(block, fundsTx, txHash); err != nil {
+				return err
+			}
+
+			mhashes, err := merkleTree.MerkleProof(fundsTx.Hash())
+			if err != nil {
+				return err
+			}
+
+			proof := protocol.NewMerkleProof(
+				block.Height,
+				mhashes,
+				fundsTx.Header,
+				fundsTx.Amount,
+				fundsTx.Fee,
+				fundsTx.TxCnt,
+				fundsTx.From,
+				fundsTx.To,
+				fundsTx.Data)
+
+			err = cstorage.WriteMerkleProof(&proof)
+			if err != nil {
+				return err
+			}
+
+			logger.Printf("Merkle proof written to client storage for tx at block height %v", block.Height)
+
+			// Check if account is sender of a transaction
+			if fundsTx.From == acc.Address {
+				//If Acc is no root, balance funds
+				if !acc.IsRoot {
+					acc.Balance -= fundsTx.Amount
+					acc.Balance -= fundsTx.Fee
+				}
+				acc.TxCnt += 1
+			}
+
+			if fundsTx.To == acc.Address {
+				acc.Balance += fundsTx.Amount
+				put(lastTenTx, ConvertFundsTx(fundsTx, "verified"))
+			}
+		}
+	}
+
+	return nil
+}
+
+func updateConfigParameters(block *protocol.Block) error {
+	for _, txHash := range block.ConfigTxData {
+		err := network.TxReq(p2p.CONFIGTX_REQ, txHash)
+		if err != nil {
+			return err
+		}
+
+		txI, err := network.Fetch(network.ConfigTxChan)
+		if err != nil {
+			return err
+		}
+
+		tx := txI.(protocol.Transaction)
+		configTx := txI.(*protocol.ConfigTx)
+
+		//Validate tx
+		if err := validateTx(block, tx, txHash); err != nil {
+			return err
+		}
+
+		configTxSlice := []*protocol.ConfigTx{configTx}
+		miner.CheckAndChangeParameters(&activeParameters, &configTxSlice)
 	}
 
 	return nil
