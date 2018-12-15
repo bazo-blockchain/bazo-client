@@ -192,7 +192,7 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 
 		// Check if it's a block with a Bloomfilter that returns false positive
 		if len(fundsTxs) == 0 && block.Beneficiary != acc.Address {
-			
+			// TODO @rmnblm
 		}
 
 		err = balanceFunds(fundsTxs, block, acc, lastTenTx)
@@ -202,7 +202,6 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 
 		if block.Beneficiary == acc.Address {
 			acc.Balance += block.TotalFees
-			// TODO @rmnblm create merkle proof for beneficiary, but how?
 		}
 	}
 
@@ -229,7 +228,7 @@ func requestFundsTx(block *protocol.Block) (fundsTxs []*protocol.FundsTx, err er
 }
 
 func balanceFunds(fundsTxs []*protocol.FundsTx, block *protocol.Block, acc *Account, lastTenTx []*FundsTxJson) error {
-	merkleTree := block.BuildMerkleTree()
+	bucket := protocol.NewTxBucket(acc.Address)
 
 	for _, fundsTx := range fundsTxs {
 		txHash := fundsTx.Hash()
@@ -239,29 +238,6 @@ func balanceFunds(fundsTxs []*protocol.FundsTx, block *protocol.Block, acc *Acco
 			if err := validateTx(block, fundsTx, txHash); err != nil {
 				return err
 			}
-
-			mhashes, err := merkleTree.MerkleProof(fundsTx.Hash())
-			if err != nil {
-				return err
-			}
-
-			proof := protocol.NewMerkleProof(
-				block.Height,
-				mhashes,
-				fundsTx.Header,
-				fundsTx.Amount,
-				fundsTx.Fee,
-				fundsTx.TxCnt,
-				fundsTx.From,
-				fundsTx.To,
-				fundsTx.Data)
-
-			err = cstorage.WriteMerkleProof(&proof)
-			if err != nil {
-				return err
-			}
-
-			logger.Printf("Merkle proof written to client storage for tx at block height %v", block.Height)
 
 			// Check if account is sender of a transaction
 			if fundsTx.From == acc.Address {
@@ -277,8 +253,31 @@ func balanceFunds(fundsTxs []*protocol.FundsTx, block *protocol.Block, acc *Acco
 				acc.Balance += fundsTx.Amount
 				put(lastTenTx, ConvertFundsTx(fundsTx, "verified"))
 			}
+
+			bucket.AddFundsTx(fundsTx)
 		}
 	}
+
+	// Create the Merkle proof for this block
+	merkleTree := block.BuildMerkleTree()
+	mhashes, err := merkleTree.MerkleProof(bucket.Hash())
+	if err != nil {
+		return err
+	}
+
+	proof := protocol.NewMerkleProof(
+		block.Height,
+		mhashes,
+		bucket.Address,
+		bucket.RelativeBalance,
+		bucket.CalculateMerkleRoot())
+
+	err = cstorage.WriteMerkleProof(&proof)
+	if err != nil {
+		return err
+	}
+
+	logger.Printf("Merkle proof written to client storage for tx at block height %v", block.Height)
 
 	return nil
 }
