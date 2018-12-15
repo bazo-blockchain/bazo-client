@@ -164,8 +164,7 @@ func saveAndLogBlockHeader(blockHeader *protocol.Block) {
 func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 	//Get blocks if the Acc address:
 	//* sent funds
-	//* received funds
-	//* is block's beneficiary
+	//* received funds * is block's beneficiary
 	//* nr of configTx in block is > 0 (in order to maintain params in light-client)
 
 	relevantHeadersBeneficiary, relevantHeadersConfigBF := getRelevantBlockHeaders(acc.Address)
