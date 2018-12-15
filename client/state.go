@@ -229,7 +229,7 @@ func requestFundsTx(block *protocol.Block) (fundsTxs []*protocol.FundsTx, err er
 }
 
 func balanceFunds(fundsTxs []*protocol.FundsTx, block *protocol.Block, acc *Account, lastTenTx []*FundsTxJson) error {
-	merkleTree := protocol.BuildMerkleTree(block)
+	merkleTree := block.BuildMerkleTree()
 
 	for _, fundsTx := range fundsTxs {
 		txHash := fundsTx.Hash()

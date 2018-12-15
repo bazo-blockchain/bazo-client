@@ -124,7 +124,7 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 		return proofs[i].Height > proofs[j].Height
 	})
 
-	tx, err := protocol.ConstrFundsTx(
+	tx, err := protocol.NewSignedFundsTx(
 		byte(args.header),
 		uint64(args.amount),
 		uint64(args.fee),
