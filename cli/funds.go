@@ -119,6 +119,8 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 	fromAddress := crypto.GetAddressFromPubKey(&fromPrivKey.PublicKey)
 	toAddress := crypto.GetAddressFromPubKey(toPubKey)
 
+	client.SyncBeforeTx(fromAddress)
+
 	proofs, err := cstorage.ReadMerkleProofs()
 	sort.Slice(proofs, func(i, j int) bool {
 		return proofs[i].Height > proofs[j].Height

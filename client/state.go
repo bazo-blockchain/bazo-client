@@ -21,9 +21,15 @@ var (
 )
 
 //Update allBlockHeaders to the latest header. Start listening to broadcasted headers after.
+func SyncBeforeTx(address [64]byte) {
+	loadBlockHeaders()
+	incomingBlockHeaders(true)
+	GetAccount(address)
+}
+
 func Sync() {
 	loadBlockHeaders()
-	go incomingBlockHeaders()
+	go incomingBlockHeaders(false)
 }
 
 func loadBlockHeaders() {
@@ -40,7 +46,7 @@ func loadBlockHeaders() {
 	network.Uptodate = true
 }
 
-func incomingBlockHeaders() {
+func incomingBlockHeaders(untilSynced bool) {
 	for {
 		blockHeaderIn := <-network.BlockHeaderIn
 
@@ -85,6 +91,10 @@ func incomingBlockHeaders() {
 
 			blockHeaders = append(blockHeaders, blockHeaderIn)
 			cstorage.WriteLastBlockHeader(blockHeaderIn)
+
+			if untilSynced {
+				return
+			}
 		}
 	}
 }
@@ -231,36 +241,36 @@ func balanceFunds(fundsTxs []*protocol.FundsTx, block *protocol.Block, acc *Acco
 	bucket := protocol.NewTxBucket(acc.Address)
 
 	for _, fundsTx := range fundsTxs {
-		txHash := fundsTx.Hash()
-
 		if fundsTx.From == acc.Address || fundsTx.To == acc.Address {
-			//Validate tx
-			if err := validateTx(block, fundsTx, txHash); err != nil {
-				return err
-			}
-
-			// Check if account is sender of a transaction
-			if fundsTx.From == acc.Address {
-				//If Acc is no root, balance funds
-				if !acc.IsRoot {
-					acc.Balance -= fundsTx.Amount
-					acc.Balance -= fundsTx.Fee
-				}
-				acc.TxCnt += 1
-			}
-
-			if fundsTx.To == acc.Address {
-				acc.Balance += fundsTx.Amount
-				put(lastTenTx, ConvertFundsTx(fundsTx, "verified"))
-			}
-
 			bucket.AddFundsTx(fundsTx)
+		}
+	}
+
+	bucketHash := bucket.Hash()
+	if err := validateBucket(block, bucketHash); err != nil {
+		return err
+	}
+
+	for _, fundsTx := range bucket.Transactions {
+		// Check if account is sender of a transaction
+		if fundsTx.From == acc.Address {
+			//If Acc is no root, balance funds
+			if !acc.IsRoot {
+				acc.Balance -= fundsTx.Amount
+				acc.Balance -= fundsTx.Fee
+			}
+			acc.TxCnt += 1
+		}
+
+		if fundsTx.To == acc.Address {
+			acc.Balance += fundsTx.Amount
+			put(lastTenTx, ConvertFundsTx(fundsTx, "verified"))
 		}
 	}
 
 	// Create the Merkle proof for this block
 	merkleTree := block.BuildMerkleTree()
-	mhashes, err := merkleTree.MerkleProof(bucket.Hash())
+	mhashes, err := merkleTree.MerkleProof(bucketHash)
 	if err != nil {
 		return err
 	}
