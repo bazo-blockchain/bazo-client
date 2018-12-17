@@ -31,13 +31,13 @@ func GetAccount(address [64]byte) (*Account, []*FundsTxJson, error) {
 	//Set default params
 	activeParameters = miner.NewDefaultParameters()
 
-	network.AccReq(false, protocol.SerializeHashContent(account.Address))
+	network.AccReq(false, account.Address)
 	if accI, _ := network.Fetch(network.AccChan); accI != nil {
 		if acc := accI.(*protocol.Account); acc != nil {
 			account.IsCreated = true
 			account.IsStaking = acc.IsStaking
 
-			network.AccReq(true, protocol.SerializeHashContent(account.Address))
+			network.AccReq(true, account.Address)
 			if rootAccI, _ := network.Fetch(network.AccChan); rootAccI != nil {
 				if rootAcc := rootAccI.(*protocol.Account); rootAcc != nil {
 					account.IsRoot = true

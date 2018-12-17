@@ -62,8 +62,6 @@ func checkAccount(args *accountArgs, logger *log.Logger) error {
 		address = crypto.GetAddressFromPubKey(&privKey.PublicKey)
 	}
 
-	logger.Printf("My address: %x\n", address)
-
 	acc, _, err := client.CheckAccount(address)
 	if err != nil {
 		logger.Println(err)

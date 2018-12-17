@@ -64,7 +64,7 @@ func txRes(p *peer, payload []byte, txType uint8) {
 
 func accRes(p *peer, payload []byte) {
 	var acc *protocol.Account
-	acc = acc.Decode(payload)
+	acc, _ = acc.Decode(payload)
 
 	AccChan <- acc
 }

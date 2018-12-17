@@ -21,16 +21,22 @@ var (
 )
 
 //Update allBlockHeaders to the latest header. Start listening to broadcasted headers after.
+func SyncBeforeTx(address [64]byte) {
+	loadBlockHeaders()
+	incomingBlockHeaders(true)
+	GetAccount(address)
+}
+
 func Sync() {
 	loadBlockHeaders()
-	go incomingBlockHeaders()
+	go incomingBlockHeaders(false)
 }
 
 func loadBlockHeaders() {
 	var last *protocol.Block
 
 	//youngest = fetchBlockHeader(nil)
-	if last = cstorage.ReadLastBlockHeader(); last != nil {
+	if last, _ = cstorage.ReadLastBlockHeader(); last != nil {
 		var loaded []*protocol.Block
 		loaded = loadDB(last, [32]byte{}, loaded)
 		blockHeaders = append(blockHeaders, loaded...)
@@ -40,7 +46,7 @@ func loadBlockHeaders() {
 	network.Uptodate = true
 }
 
-func incomingBlockHeaders() {
+func incomingBlockHeaders(untilSynced bool) {
 	for {
 		blockHeaderIn := <-network.BlockHeaderIn
 
@@ -85,6 +91,10 @@ func incomingBlockHeaders() {
 
 			blockHeaders = append(blockHeaders, blockHeaderIn)
 			cstorage.WriteLastBlockHeader(blockHeaderIn)
+
+			if untilSynced {
+				return
+			}
 		}
 	}
 }
@@ -118,7 +128,7 @@ func loadDB(last *protocol.Block, abort [32]byte, loaded []*protocol.Block) []*p
 	var ancestor *protocol.Block
 
 	if last.PrevHash != abort {
-		if ancestor = cstorage.ReadBlockHeader(last.PrevHash); ancestor == nil {
+		if ancestor, _ = cstorage.ReadBlockHeader(last.PrevHash); ancestor == nil {
 			logger.Fatal()
 		}
 
@@ -174,82 +184,136 @@ func getState(acc *Account, lastTenTx []*FundsTxJson) (err error) {
 
 	relevantBlocks, err := getRelevantBlocks(relevantHeadersConfigBF)
 	for _, block := range relevantBlocks {
-		if block != nil {
-			//Balance funds and collect fee
-			for _, txHash := range block.FundsTxData {
-				err := network.TxReq(p2p.FUNDSTX_REQ, txHash)
-				if err != nil {
-					return err
-				}
-
-				txI, err := network.Fetch(network.FundsTxChan)
-				if err != nil {
-					return err
-				}
-
-				tx := txI.(protocol.Transaction)
-				fundsTx := txI.(*protocol.FundsTx)
-
-				if fundsTx.From == acc.Address || fundsTx.To == acc.Address || block.Beneficiary == acc.Address {
-					//Validate tx
-					if err := validateTx(block, tx, txHash); err != nil {
-						return err
-					}
-
-					if fundsTx.From == acc.Address {
-						//If Acc is no root, balance funds
-						if !acc.IsRoot {
-							acc.Balance -= fundsTx.Amount
-							acc.Balance -= fundsTx.Fee
-						}
-
-						acc.TxCnt += 1
-					}
-
-					if fundsTx.To == acc.Address {
-						acc.Balance += fundsTx.Amount
-
-						put(lastTenTx, ConvertFundsTx(fundsTx, "verified"))
-					}
-
-					if block.Beneficiary == acc.Address {
-						acc.Balance += fundsTx.Fee
-					}
-				}
-			}
-
-			//Update config parameters and collect fee
-			for _, txHash := range block.ConfigTxData {
-				err := network.TxReq(p2p.CONFIGTX_REQ, txHash)
-				if err != nil {
-					return err
-				}
-
-				txI, err := network.Fetch(network.ConfigTxChan)
-				if err != nil {
-					return err
-				}
-
-				tx := txI.(protocol.Transaction)
-				configTx := txI.(*protocol.ConfigTx)
-
-				configTxSlice := []*protocol.ConfigTx{configTx}
-
-				if block.Beneficiary == acc.Address {
-					//Validate tx
-					if err := validateTx(block, tx, txHash); err != nil {
-						return err
-					}
-
-					acc.Balance += configTx.Fee
-				}
-
-				miner.CheckAndChangeParameters(&activeParameters, &configTxSlice)
-			}
-
-			//TODO stakeTx
-
+		if block == nil {
+			continue
 		}
+
+		err = updateConfigParameters(block)
+		if err != nil {
+			return err
+		}
+
+		// Check if bloomfilter returns false, if yes, the block has nothing related to account's address
+		if !block.BloomFilter.Test(acc.Address[:]) {
+			continue
+		}
+
+		fundsTxs, err := requestFundsTx(block)
+
+		// Check if it's a block with a Bloomfilter that returns false positive
+		if len(fundsTxs) == 0 && block.Beneficiary != acc.Address {
+			// TODO @rmnblm
+		}
+
+		err = balanceFunds(fundsTxs, block, acc, lastTenTx)
+		if err != nil {
+			return err
+		}
+
+		if block.Beneficiary == acc.Address {
+			acc.Balance += block.TotalFees
+		}
+	}
+
+	return nil
+}
+
+func requestFundsTx(block *protocol.Block) (fundsTxs []*protocol.FundsTx, err error) {
+	for _, txHash := range block.FundsTxData {
+		err := network.TxReq(p2p.FUNDSTX_REQ, txHash)
+		if err != nil {
+			return nil, err
+		}
+
+		txI, err := network.Fetch(network.FundsTxChan)
+		if err != nil {
+			return nil, err
+		}
+
+		fundsTx := txI.(*protocol.FundsTx)
+		fundsTxs = append(fundsTxs, fundsTx)
+	}
+
+	return fundsTxs, nil
+}
+
+func balanceFunds(fundsTxs []*protocol.FundsTx, block *protocol.Block, acc *Account, lastTenTx []*FundsTxJson) error {
+	bucket := protocol.NewTxBucket(acc.Address)
+
+	for _, fundsTx := range fundsTxs {
+		if fundsTx.From == acc.Address || fundsTx.To == acc.Address {
+			bucket.AddFundsTx(fundsTx)
+		}
+	}
+
+	bucketHash := bucket.Hash()
+	if err := validateBucket(block, bucketHash); err != nil {
+		return err
+	}
+
+	for _, fundsTx := range bucket.Transactions {
+		// Check if account is sender of a transaction
+		if fundsTx.From == acc.Address {
+			//If Acc is no root, balance funds
+			if !acc.IsRoot {
+				acc.Balance -= fundsTx.Amount
+				acc.Balance -= fundsTx.Fee
+			}
+			acc.TxCnt += 1
+		}
+
+		if fundsTx.To == acc.Address {
+			acc.Balance += fundsTx.Amount
+			put(lastTenTx, ConvertFundsTx(fundsTx, "verified"))
+		}
+	}
+
+	// Create the Merkle proof for this block
+	merkleTree := block.BuildMerkleTree()
+	mhashes, err := merkleTree.MerkleProof(bucketHash)
+	if err != nil {
+		return err
+	}
+
+	proof := protocol.NewMerkleProof(
+		block.Height,
+		mhashes,
+		bucket.Address,
+		bucket.RelativeBalance,
+		bucket.CalculateMerkleRoot())
+
+	err = cstorage.WriteMerkleProof(&proof)
+	if err != nil {
+		return err
+	}
+
+	logger.Printf("Merkle proof written to client storage for tx at block height %v", block.Height)
+
+	return nil
+}
+
+func updateConfigParameters(block *protocol.Block) error {
+	for _, txHash := range block.ConfigTxData {
+		err := network.TxReq(p2p.CONFIGTX_REQ, txHash)
+		if err != nil {
+			return err
+		}
+
+		txI, err := network.Fetch(network.ConfigTxChan)
+		if err != nil {
+			return err
+		}
+
+		tx := txI.(protocol.Transaction)
+		configTx := txI.(*protocol.ConfigTx)
+
+		//Validate tx
+		if err := validateTx(block, tx, txHash); err != nil {
+			return err
+		}
+
+		configTxSlice := []*protocol.ConfigTx{configTx}
+		miner.CheckAndChangeParameters(&activeParameters, &configTxSlice)
 	}
 
 	return nil

@@ -6,35 +6,35 @@ import (
 )
 
 func WriteBlockHeader(header *protocol.Block) (err error) {
-	err = db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("blockheaders"))
-		err := b.Put(header.Hash[:], header.EncodeHeader())
-
-		return err
+	return db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BLOCKHEADERS_BUCKET))
+		return b.Put(header.Hash[:], header.EncodeHeader())
 	})
-
-	return err
 }
 
 //Before saving the last block header, delete all existing entries.
 func WriteLastBlockHeader(header *protocol.Block) (err error) {
-	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("lastblockheader"))
-		b.ForEach(func(k, v []byte) error {
-			b.Delete(k)
-
-			return nil
-		})
-
-		return nil
-	})
-
 	err = db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("lastblockheader"))
-		err := b.Put(header.Hash[:], header.EncodeHeader())
-
-		return err
+		b := tx.Bucket([]byte(LASTBLOCKHEADER_BUCKET))
+		return b.ForEach(func(k, v []byte) error {
+			return b.Delete(k)
+		})
 	})
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	return db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(LASTBLOCKHEADER_BUCKET))
+		return b.Put(header.Hash[:], header.EncodeHeader())
+	})
+}
+
+func WriteMerkleProof(proof *protocol.MerkleProof) (err error) {
+	return db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(MERKLEPROOF_BUCKET))
+		key := proof.Hash()
+		return b.Put(key[:], proof.Encode())
+	})
 }

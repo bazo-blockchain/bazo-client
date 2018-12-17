@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bazo-blockchain/bazo-client/client"
+	"github.com/bazo-blockchain/bazo-client/cstorage"
 	"github.com/bazo-blockchain/bazo-client/network"
 	"github.com/bazo-blockchain/bazo-client/util"
 	"github.com/bazo-blockchain/bazo-miner/crypto"
@@ -12,6 +13,7 @@ import (
 	"github.com/bazo-blockchain/bazo-miner/protocol"
 	"github.com/urfave/cli"
 	"log"
+	"sort"
 )
 
 type fundsArgs struct {
@@ -117,7 +119,14 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 	fromAddress := crypto.GetAddressFromPubKey(&fromPrivKey.PublicKey)
 	toAddress := crypto.GetAddressFromPubKey(toPubKey)
 
-	tx, err := protocol.ConstrFundsTx(
+	client.SyncBeforeTx(fromAddress)
+
+	proofs, err := cstorage.ReadMerkleProofs()
+	sort.Slice(proofs, func(i, j int) bool {
+		return proofs[i].Height > proofs[j].Height
+	})
+
+	tx, err := protocol.NewSignedFundsTx(
 		byte(args.header),
 		uint64(args.amount),
 		uint64(args.fee),
@@ -131,6 +140,8 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 		logger.Printf("%v\n", err)
 		return err
 	}
+
+	tx.Proofs = proofs
 
 	if err := network.SendTx(util.Config.BootstrapIpport, tx, p2p.FUNDSTX_BRDCST); err != nil {
 		logger.Printf("%v\n", err)
