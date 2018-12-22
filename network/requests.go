@@ -19,6 +19,18 @@ func BlockReq(blockHash []byte) error {
 	return nil
 }
 
+func StateReq() error {
+	p := peers.getRandomPeer()
+	if p == nil {
+		return errors.New("Couldn't get a connection, request not transmitted.")
+	}
+
+	packet := p2p.BuildPacket(p2p.STATE_REQ, nil)
+	sendData(p, packet)
+
+	return nil
+}
+
 func BlockHeaderReq(blockHash []byte) error {
 	p := peers.getRandomPeer()
 	if p == nil {
