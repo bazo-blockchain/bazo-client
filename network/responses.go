@@ -1,7 +1,9 @@
 package network
 
 import (
+	"bytes"
 	"encoding/binary"
+	"encoding/gob"
 	"github.com/bazo-blockchain/bazo-miner/p2p"
 	"github.com/bazo-blockchain/bazo-miner/protocol"
 	"strconv"
@@ -67,6 +69,15 @@ func accRes(p *peer, payload []byte) {
 	acc = acc.Decode(payload)
 
 	AccChan <- acc
+}
+
+func stateRes(p *peer, payload []byte) {
+	var decoded map[[64]byte]*protocol.Account
+	buffer := bytes.NewBuffer(payload)
+	decoder := gob.NewDecoder(buffer)
+	decoder.Decode(&decoded)
+
+	StateChan <- &decoded
 }
 
 func intermediateNodesRes(p *peer, payload []byte) {

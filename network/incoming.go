@@ -11,6 +11,7 @@ var (
 	iplistChan    = make(chan string, p2p.MIN_MINERS)
 
 	BlockChan             = make(chan interface{})
+	StateChan             = make(chan interface{})
 	BlockHeaderChan       = make(chan interface{})
 	FundsTxChan           = make(chan interface{})
 	ContractTxChan        = make(chan interface{})
@@ -52,5 +53,7 @@ func processIncomingMsg(p *peer, header *p2p.Header, payload []byte) {
 		intermediateNodesRes(p, payload)
 	case p2p.NEIGHBOR_RES:
 		processNeighborRes(p, payload)
+	case p2p.STATE_RES:
+		stateRes(p, payload)
 	}
 }

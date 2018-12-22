@@ -118,7 +118,22 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 	fromAddress := crypto.GetAddressFromPubKey(&fromPrivKey.PublicKey)
 	toAddress := crypto.GetAddressFromPubKey(toPubKey)
 
-	currentState := cstorage.RetrieveState()
+	//retrieve state form the network
+	err = network.StateReq()
+	if err != nil {
+		return err
+	}
+
+	state, err := network.Fetch(network.StateChan)
+	if err != nil {
+		return err
+	}
+
+	var state2 map[[64]byte]*protocol.Account
+	state2 = state.(map[[64]byte]*protocol.Account)
+
+	//currentState := cstorage.RetrieveState()
+	currentState := state2
 
 	merklePatriciaTree, err := protocol.BuildMPT(currentState)
 
