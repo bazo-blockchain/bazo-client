@@ -2,6 +2,8 @@ package cstorage
 
 import (
 	"github.com/bazo-blockchain/bazo-client/util"
+	"github.com/bazo-blockchain/bazo-miner/miner"
+	"github.com/bazo-blockchain/bazo-miner/protocol"
 	"github.com/bazo-blockchain/bazo-miner/storage"
 	"github.com/boltdb/bolt"
 	"log"
@@ -61,6 +63,10 @@ func Init(dbname string) (err error) {
 		return nil
 	})*/
 	return nil
+}
+
+func RetrieveState() (state map[[64]byte]*protocol.Account)  {
+	return miner.GetState()
 }
 
 func TearDown() {

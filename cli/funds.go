@@ -10,6 +10,7 @@ import (
 	"github.com/bazo-blockchain/bazo-miner/crypto"
 	"github.com/bazo-blockchain/bazo-miner/p2p"
 	"github.com/bazo-blockchain/bazo-miner/protocol"
+	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/urfave/cli"
 	"log"
 )
@@ -87,6 +88,8 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 		return err
 	}
 
+
+
 	var toPubKey *ecdsa.PublicKey
 	if len(args.toWalletFile) == 0 {
 		if len(args.toAddress) == 0 {
@@ -115,6 +118,34 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 	fromAddress := crypto.GetAddressFromPubKey(&fromPrivKey.PublicKey)
 	toAddress := crypto.GetAddressFromPubKey(toPubKey)
 
+	currentState := cstorage.RetrieveState()
+
+	merklePatriciaTree, err := protocol.BuildMPT(currentState)
+
+	if err != nil {
+		logger.Printf("%v\n", err)
+		return err
+	}
+
+	proofOutOfTrie, err := protocol.CreateProver(merklePatriciaTree,fromAddress[:])
+
+	if err != nil {
+		logger.Printf("%v\n", err)
+		return err
+	}
+
+	proofAsMap, err := MemDBToMPTMap(proofOutOfTrie)
+
+	if err != nil {
+		logger.Printf("%v\n", err)
+		return err
+	}
+
+	mpt_proof := new(protocol.MPT_Proof)
+	mpt_proof.Proofs = proofAsMap
+
+	cstorage.WriteMptProof(mpt_proof)
+
 	mpt_Proof, err := cstorage.ReadMptProofs()
 
 	tx, err := protocol.ConstrFundsTx(
@@ -142,6 +173,24 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 	}
 
 	return nil
+}
+
+func MemDBToMPTMap(proofDB *ethdb.MemDatabase)  (proof map[string][]byte, err error) {
+	preliminaryMPTMap := make(map[string][]byte)
+
+	//Iterate over db of proof and append key and values to the map in MPT_Proof
+	for _, key := range proofDB.Keys(){
+		retrievedValue, err := proofDB.Get(key)
+
+		if err != nil {
+			err := fmt.Sprintf("Error while retrieving value for key: %x ", string(key))
+			return nil, errors.New(err)
+		}
+
+		preliminaryMPTMap[string(key)] = retrievedValue
+	}
+
+	return preliminaryMPTMap, nil
 }
 
 func (args fundsArgs) ValidateInput() error {
