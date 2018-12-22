@@ -1,8 +1,8 @@
 package cstorage
 
 import (
-	"fmt"
 	"github.com/bazo-blockchain/bazo-client/util"
+	"github.com/bazo-blockchain/bazo-miner/storage"
 	"github.com/boltdb/bolt"
 	"log"
 	"time"
@@ -11,26 +11,42 @@ import (
 var (
 	db     *bolt.DB
 	logger *log.Logger
+	Buckets	[]string
 )
 
 const (
 	ERROR_MSG = "Initiate storage aborted: "
+	BLOCKHEADERS_BUCKET = "blockheaders"
+	LASTBLOCKHEADER_BUCKET = "lastblockheader"
+	MERKLEPATRICIAPROOF_BUCKET = "merklepatriciaproofs"
 )
 
 //Entry function for the storage package
-func Init(dbname string) {
+func Init(dbname string) (err error) {
 	logger = util.InitLogger()
 
-	var err error
+	Buckets = []string {
+		BLOCKHEADERS_BUCKET,
+		LASTBLOCKHEADER_BUCKET,
+		MERKLEPATRICIAPROOF_BUCKET,
+	}
+
 	db, err = bolt.Open(dbname, 0600, &bolt.Options{Timeout: 5 * time.Second})
 	if err != nil {
 		logger.Fatal(ERROR_MSG, err)
 	}
 
-	db.Update(func(tx *bolt.Tx) error {
+	for _, bucket := range Buckets {
+		err = storage.CreateBucket(bucket, db)
+		if err != nil {
+			return err
+		}
+	}
+
+	/*db.Update(func(tx *bolt.Tx) error {
 		_, err = tx.CreateBucket([]byte("blockheaders"))
 		if err != nil {
-			return fmt.Errorf(ERROR_MSG+"Create bucket: %s", err)
+			return fmt.Errorf(ERROR_MSG + "Create bucket: %s", err)
 		}
 
 		return nil
@@ -43,7 +59,8 @@ func Init(dbname string) {
 		}
 
 		return nil
-	})
+	})*/
+	return nil
 }
 
 func TearDown() {

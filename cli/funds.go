@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"github.com/bazo-blockchain/bazo-client/cstorage"
 	"github.com/bazo-blockchain/bazo-client/network"
 	"github.com/bazo-blockchain/bazo-client/util"
 	"github.com/bazo-blockchain/bazo-miner/crypto"
@@ -114,6 +115,8 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 	fromAddress := crypto.GetAddressFromPubKey(&fromPrivKey.PublicKey)
 	toAddress := crypto.GetAddressFromPubKey(toPubKey)
 
+	mpt_Proof, err := cstorage.ReadMptProofs()
+
 	tx, err := protocol.ConstrFundsTx(
 		byte(args.header),
 		uint64(args.amount),
@@ -128,6 +131,8 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 		logger.Printf("%v\n", err)
 		return err
 	}
+
+	tx.MPT_Proof = *mpt_Proof
 
 	if err := network.SendTx(util.Config.BootstrapIpport, tx, p2p.FUNDSTX_BRDCST); err != nil {
 		logger.Printf("%v\n", err)
