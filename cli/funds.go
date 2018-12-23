@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"github.com/bazo-blockchain/bazo-client/cstorage"
 	"github.com/bazo-blockchain/bazo-client/network"
 	"github.com/bazo-blockchain/bazo-client/util"
 	"github.com/bazo-blockchain/bazo-miner/crypto"
@@ -119,21 +118,20 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 	toAddress := crypto.GetAddressFromPubKey(toPubKey)
 
 	//retrieve state form the network
-	err = network.StateReq(util.Config.BootstrapIpport)
+	currentState, err := network.StateReq(util.Config.BootstrapIpport, util.Config.ThisIpport)
 	if err != nil {
 		return err
 	}
 
-	state, err := network.Fetch(network.StateChan)
+	/*state, err := network.Fetch(network.StateChan)
 	if err != nil {
 		return err
 	}
 
 	var state2 map[[64]byte]*protocol.Account
-	state2 = state.(map[[64]byte]*protocol.Account)
+	state2 = state.(map[[64]byte]*protocol.Account)*/
 
 	//currentState := cstorage.RetrieveState()
-	currentState := state2
 
 	merklePatriciaTree, err := protocol.BuildMPT(currentState)
 
@@ -159,9 +157,9 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 	mpt_proof := new(protocol.MPT_Proof)
 	mpt_proof.Proofs = proofAsMap
 
-	cstorage.WriteMptProof(mpt_proof)
+	//cstorage.WriteMptProof(mpt_proof)
 
-	mpt_Proof, err := cstorage.ReadMptProofs()
+	//mpt_Proof, err := cstorage.ReadMptProofs()
 
 	tx, err := protocol.ConstrFundsTx(
 		byte(args.header),
@@ -177,8 +175,7 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 		logger.Printf("%v\n", err)
 		return err
 	}
-
-	tx.MPT_Proof = *mpt_Proof
+	tx.MPT_Proof = *mpt_proof
 
 	if err := network.SendTx(util.Config.BootstrapIpport, tx, p2p.FUNDSTX_BRDCST); err != nil {
 		logger.Printf("%v\n", err)

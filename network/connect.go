@@ -77,8 +77,8 @@ func initiateNewClientConnectionForState(dial string) (error) {
 		return err
 	}
 
-	conn.(*net.TCPConn).SetKeepAlive(true)
-	conn.(*net.TCPConn).SetKeepAlivePeriod(2 * time.Minute)
+	/*conn.(*net.TCPConn).SetKeepAlive(true)
+	conn.(*net.TCPConn).SetKeepAlivePeriod(2 * time.Minute)*/
 
 	p := newPeer(conn, strings.Split(dial, ":")[1])
 
@@ -90,18 +90,20 @@ func initiateNewClientConnectionForState(dial string) (error) {
 
 	conn.Write(packet)
 
+
 	//Wait for the other party to finish the handshake with the corresponding message
 	header, _, err := rcvData(p)
 	if err != nil || header.TypeID != p2p.STATE_RES {
 		return errors.New(fmt.Sprintf("Failed to complete state exchange: %v", err))
 	}
 
+	conn.Close()
+
 	return nil
 }
 
 func minerConn(p *peer) {
 	logger.Printf("Adding a new miner: %v\n", p.getIPPort())
-
 	//Give the peer a channel
 	p.ch = make(chan []byte)
 
@@ -117,7 +119,6 @@ func minerConn(p *peer) {
 			disconnect <- p
 			return
 		}
-
 		processIncomingMsg(p, header, payload)
 	}
 }
