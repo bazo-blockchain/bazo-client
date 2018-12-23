@@ -119,7 +119,7 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 	toAddress := crypto.GetAddressFromPubKey(toPubKey)
 
 	//retrieve state form the network
-	err = network.StateReq(util.Config.BootstrapIpport, util.Config.ThisIpport)
+	err = network.StateReq(util.Config.BootstrapIpport)
 	if err != nil {
 		return err
 	}

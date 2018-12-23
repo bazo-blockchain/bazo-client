@@ -11,7 +11,7 @@ const (
 
 	HEALTH_CHECK_INTERVAL = 30 //Sec
 	MIN_MINERS            = 1
-	FETCH_TIMEOUT         = 10 //SEC
+	FETCH_TIMEOUT         = 15 //SEC
 )
 
 var (

@@ -67,6 +67,38 @@ func initiateNewClientConnection(dial string) (*peer, error) {
 	return p, nil
 }
 
+func initiateNewClientConnectionForState(dial string) (error) {
+	var conn net.Conn
+
+	//Open up a tcp dial and instantiate a peer struct, wait for adding it to the peerStruct before we finalize
+	//the handshake
+	conn, err := net.Dial("tcp", dial)
+	if err != nil {
+		return err
+	}
+
+	conn.(*net.TCPConn).SetKeepAlive(true)
+	conn.(*net.TCPConn).SetKeepAlivePeriod(2 * time.Minute)
+
+	p := newPeer(conn, strings.Split(dial, ":")[1])
+
+	localPort, _ := strconv.Atoi(util.Config.Thisclient.Port)
+	packet, err := p2p.PrepareStateExchange(p2p.STATE_REQ, localPort)
+	if err != nil {
+		return err
+	}
+
+	conn.Write(packet)
+
+	//Wait for the other party to finish the handshake with the corresponding message
+	header, _, err := rcvData(p)
+	if err != nil || header.TypeID != p2p.STATE_RES {
+		return errors.New(fmt.Sprintf("Failed to complete state exchange: %v", err))
+	}
+
+	return nil
+}
+
 func minerConn(p *peer) {
 	logger.Printf("Adding a new miner: %v\n", p.getIPPort())
 

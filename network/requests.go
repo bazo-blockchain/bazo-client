@@ -19,30 +19,13 @@ func BlockReq(blockHash []byte) error {
 	return nil
 }
 
-func StateReq(dial string, thisipport string) error {
-	/*p := peers.getRandomPeer()
-
-	if p == nil {
-		return errors.New("Couldn't get a connection, request not transmitted.")
-	}
-
-	packet := p2p.BuildPacket(p2p.STATE_REQ, nil)
-	sendData(p, packet)
-
-	return nil*/
-	if conn := p2p.Connect(dial); conn != nil {
-		packet := p2p.BuildPacket(p2p.STATE_REQ, []byte(thisipport))
-		conn.Write(packet)
-
-		header, payload, err := p2p.RcvData_(conn)
-		if err != nil || header.TypeID == p2p.NOT_FOUND {
-			err = errors.New(string(payload[:]))
-		}
-		conn.Close()
-
+func StateReq(dial string) error {
+	err := initiateNewClientConnectionForState(dial)
+	if err != nil {
+		logger.Fatal("Initiating new network connection failed: ", err)
 		return err
 	}
-	return errors.New(fmt.Sprintf("Sending state request failed at: %x.", dial))
+	return nil
 }
 
 func BlockHeaderReq(blockHash []byte) error {
