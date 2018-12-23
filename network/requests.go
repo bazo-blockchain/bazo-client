@@ -19,8 +19,9 @@ func BlockReq(blockHash []byte) error {
 	return nil
 }
 
-func StateReq() error {
-	p := peers.getRandomPeer()
+func StateReq(dial string, thisipport string) error {
+	/*p := peers.getRandomPeer()
+
 	if p == nil {
 		return errors.New("Couldn't get a connection, request not transmitted.")
 	}
@@ -28,7 +29,20 @@ func StateReq() error {
 	packet := p2p.BuildPacket(p2p.STATE_REQ, nil)
 	sendData(p, packet)
 
-	return nil
+	return nil*/
+	if conn := p2p.Connect(dial); conn != nil {
+		packet := p2p.BuildPacket(p2p.STATE_REQ, []byte(thisipport))
+		conn.Write(packet)
+
+		header, payload, err := p2p.RcvData_(conn)
+		if err != nil || header.TypeID == p2p.NOT_FOUND {
+			err = errors.New(string(payload[:]))
+		}
+		conn.Close()
+
+		return err
+	}
+	return errors.New(fmt.Sprintf("Sending state request failed at: %x.", dial))
 }
 
 func BlockHeaderReq(blockHash []byte) error {
