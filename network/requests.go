@@ -89,7 +89,7 @@ func TxReq(txType uint8, txHash [32]byte) error {
 	return nil
 }
 
-func AccReq(root bool, addressHash [32]byte) error {
+func AccReq(root bool, address [64]byte) error {
 	p := peers.getRandomPeer()
 	if p == nil {
 		return errors.New("Couldn't get a connection, request not transmitted.")
@@ -97,9 +97,9 @@ func AccReq(root bool, addressHash [32]byte) error {
 
 	var packet []byte
 	if root {
-		packet = p2p.BuildPacket(p2p.ROOTACC_REQ, addressHash[:])
+		packet = p2p.BuildPacket(p2p.ROOTACC_REQ, address[:])
 	} else {
-		packet = p2p.BuildPacket(p2p.ACC_REQ, addressHash[:])
+		packet = p2p.BuildPacket(p2p.ACC_REQ, address[:])
 	}
 
 	sendData(p, packet)

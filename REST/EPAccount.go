@@ -23,7 +23,7 @@ func GetAccountEndpoint(w http.ResponseWriter, req *http.Request) {
 	if len(param) == 64 {
 		copy(addressHash[:], pubKeyInt.Bytes())
 
-		network.AccReq(false, addressHash)
+		network.AccReq(false, address) //changed from 'addressHash'
 
 		accI, _ := network.Fetch(network.AccChan)
 		acc := accI.(*protocol.Account)
