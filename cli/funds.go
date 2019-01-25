@@ -117,45 +117,45 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 	fromAddress := crypto.GetAddressFromPubKey(&fromPrivKey.PublicKey)
 	toAddress := crypto.GetAddressFromPubKey(toPubKey)
 
-	//retrieve state form the network
-	currentState, err := network.StateReq(util.Config.BootstrapIpport, util.Config.ThisIpport)
-	if err != nil {
-		return err
-	}
-
-	/*state, err := network.Fetch(network.StateChan)
-	if err != nil {
-		return err
-	}
-
-	var state2 map[[64]byte]*protocol.Account
-	state2 = state.(map[[64]byte]*protocol.Account)*/
-
-	//currentState := cstorage.RetrieveState()
-
-	merklePatriciaTree, err := protocol.BuildMPT(currentState)
-
-	if err != nil {
-		logger.Printf("%v\n", err)
-		return err
-	}
-
-	proofOutOfTrie, err := protocol.CreateProver(merklePatriciaTree,fromAddress[:])
-
-	if err != nil {
-		logger.Printf("%v\n", err)
-		return err
-	}
-
-	proofAsMap, err := MemDBToMPTMap(proofOutOfTrie)
-
-	if err != nil {
-		logger.Printf("%v\n", err)
-		return err
-	}
-
-	mpt_proof := new(protocol.MPT_Proof)
-	mpt_proof.Proofs = proofAsMap
+	////retrieve state form the network
+	//currentState, err := network.StateReq(util.Config.BootstrapIpport, util.Config.ThisIpport)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	///*state, err := network.Fetch(network.StateChan)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//var state2 map[[64]byte]*protocol.Account
+	//state2 = state.(map[[64]byte]*protocol.Account)*/
+	//
+	////currentState := cstorage.RetrieveState()
+	//
+	//merklePatriciaTree, err := protocol.BuildMPT(currentState)
+	//
+	//if err != nil {
+	//	logger.Printf("%v\n", err)
+	//	return err
+	//}
+	//
+	//proofOutOfTrie, err := protocol.CreateProver(merklePatriciaTree,fromAddress[:])
+	//
+	//if err != nil {
+	//	logger.Printf("%v\n", err)
+	//	return err
+	//}
+	//
+	//proofAsMap, err := MemDBToMPTMap(proofOutOfTrie)
+	//
+	//if err != nil {
+	//	logger.Printf("%v\n", err)
+	//	return err
+	//}
+	//
+	//mpt_proof := new(protocol.MPT_Proof)
+	//mpt_proof.Proofs = proofAsMap
 
 	//cstorage.WriteMptProof(mpt_proof)
 
@@ -175,7 +175,7 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 		logger.Printf("%v\n", err)
 		return err
 	}
-	tx.MPT_Proof = *mpt_proof
+	//tx.MPT_Proof = *mpt_proof
 
 	if err := network.SendTx(util.Config.BootstrapIpport, tx, p2p.FUNDSTX_BRDCST); err != nil {
 		logger.Printf("%v\n", err)
