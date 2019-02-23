@@ -38,21 +38,3 @@ func WriteLastBlockHeader(header *protocol.Block) (err error) {
 
 	return err
 }
-
-func WriteMptProof(proof *protocol.MPT_Proof) (err error) {
-	//Delete all MPT Proofs from DB, because the client only needs to send one proof
-	db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(MERKLEPATRICIAPROOF_BUCKET))
-		b.ForEach(func(k, v []byte) error {
-			b.Delete(k)
-			return nil
-		})
-		return nil
-	})
-
-	return db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(MERKLEPATRICIAPROOF_BUCKET))
-		key := proof.Hash()
-		return b.Put(key[:], proof.Encode())
-	})
-}
