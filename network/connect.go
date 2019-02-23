@@ -103,7 +103,7 @@ func initiateNewClientConnectionForState(dial string) (error) {
 }
 
 func minerConn(p *peer) {
-	logger.Printf("Adding a new miner: %v\n", p.getIPPort())
+	//logger.Printf("Adding a new miner: %v\n", p.getIPPort())
 	//Give the peer a channel
 	p.ch = make(chan []byte)
 

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"crypto/ecdsa"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/bazo-blockchain/bazo-client/network"
@@ -9,7 +10,6 @@ import (
 	"github.com/bazo-blockchain/bazo-miner/crypto"
 	"github.com/bazo-blockchain/bazo-miner/p2p"
 	"github.com/bazo-blockchain/bazo-miner/protocol"
-	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/urfave/cli"
 	"log"
 )
@@ -177,32 +177,18 @@ func sendFunds(args *fundsArgs, logger *log.Logger) error {
 	}
 	//tx.MPT_Proof = *mpt_proof
 
+	//testShardAssignment := assignTransactionToShard(tx)
+	//testShardAbs := Abs(int32(testShardAssignment))
+	//logger.Printf("testShard: %d",testShardAbs)
+
 	if err := network.SendTx(util.Config.BootstrapIpport, tx, p2p.FUNDSTX_BRDCST); err != nil {
-		logger.Printf("%v\n", err)
+		//logger.Printf("%v\n", err)
 		return err
 	} else {
-		logger.Printf("Transaction successfully sent to network:\nTxHash: %x%v", tx.Hash(), tx)
+		//logger.Printf("Transaction successfully sent to network:\nTxHash: %x%v", tx.Hash(), tx)
 	}
 
 	return nil
-}
-
-func MemDBToMPTMap(proofDB *ethdb.MemDatabase)  (proof map[string][]byte, err error) {
-	preliminaryMPTMap := make(map[string][]byte)
-
-	//Iterate over db of proof and append key and values to the map in MPT_Proof
-	for _, key := range proofDB.Keys(){
-		retrievedValue, err := proofDB.Get(key)
-
-		if err != nil {
-			err := fmt.Sprintf("Error while retrieving value for key: %x ", string(key))
-			return nil, errors.New(err)
-		}
-
-		preliminaryMPTMap[string(key)] = retrievedValue
-	}
-
-	return preliminaryMPTMap, nil
 }
 
 func (args fundsArgs) ValidateInput() error {
@@ -222,7 +208,7 @@ func (args fundsArgs) ValidateInput() error {
 		return errors.New("invalid argument: toAddress")
 	}
 
-	if args.fee <= 0 {
+	if args.fee < 0 {
 		return errors.New("invalid argument: fee must be > 0")
 	}
 
@@ -231,4 +217,43 @@ func (args fundsArgs) ValidateInput() error {
 	}
 
 	return nil
+}
+
+func assignTransactionToShard(transaction protocol.Transaction) (shardNr int) {
+	//Convert Address/Issuer ([64]bytes) included in TX to bigInt for the modulo operation to determine the assigned shard ID.
+	switch transaction.(type) {
+	case *protocol.ContractTx:
+		var byteToConvert [64]byte
+		byteToConvert = transaction.(*protocol.ContractTx).Issuer
+		var calculatedInt int
+		calculatedInt = int(binary.BigEndian.Uint64(byteToConvert[:8]))
+		return int((calculatedInt % 4) + 1)
+	case *protocol.FundsTx:
+		var byteToConvert [64]byte
+		byteToConvert = transaction.(*protocol.FundsTx).From
+		var calculatedInt int
+		calculatedInt = int(binary.BigEndian.Uint64(byteToConvert[:8]))
+		return int((calculatedInt % 4) + 1)
+	case *protocol.ConfigTx:
+		var byteToConvert [64]byte
+		byteToConvert = transaction.(*protocol.ConfigTx).Sig
+		var calculatedInt int
+		calculatedInt = int(binary.BigEndian.Uint64(byteToConvert[:8]))
+		return int((calculatedInt % 4) + 1)
+	case *protocol.StakeTx:
+		var byteToConvert [64]byte
+		byteToConvert = transaction.(*protocol.StakeTx).Account
+		var calculatedInt int
+		calculatedInt = int(binary.BigEndian.Uint64(byteToConvert[:8]))
+		return int((calculatedInt % 4) + 1)
+	default:
+		return 1 // default shard Nr.
+	}
+}
+
+func Abs(x int32) int32 {
+	if x < 0 {
+		return -x
+	}
+	return x
 }

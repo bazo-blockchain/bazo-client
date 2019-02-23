@@ -139,7 +139,7 @@ func toggleStaking(args *stakingArgs, logger *log.Logger) error {
 }
 
 func (args stakingArgs) ValidateInput() error {
-	if args.fee <= 0 {
+	if args.fee < 0 {
 		return errors.New("invalid argument: fee must be > 0")
 	}
 

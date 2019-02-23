@@ -29,7 +29,7 @@ func processIncomingMsg(p *peer, header *p2p.Header, payload []byte) {
 		if Uptodate {
 			blockHeaderBrdcst(p, payload)
 		} else {
-			logger.Println("Broadcasted block header not processed.")
+			//logger.Println("Broadcasted block header not processed.")
 		}
 
 		//RESULTS
