@@ -53,7 +53,5 @@ func processIncomingMsg(p *peer, header *p2p.Header, payload []byte) {
 		intermediateNodesRes(p, payload)
 	case p2p.NEIGHBOR_RES:
 		processNeighborRes(p, payload)
-	case p2p.STATE_RES:
-		stateRes(p, payload)
 	}
 }
