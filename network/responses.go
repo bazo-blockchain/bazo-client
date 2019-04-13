@@ -9,7 +9,7 @@ import (
 
 func blockHeaderBrdcst(p *peer, payload []byte) {
 	var blockHeader *protocol.Block
-	blockHeader = blockHeader.Decode(payload)
+	blockHeader = blockHeader.DecodeHeader(payload)
 	BlockHeaderIn <- blockHeader
 }
 
@@ -21,7 +21,7 @@ func blockRes(p *peer, payload []byte) {
 
 func blockHeaderRes(p *peer, payload []byte) {
 	var blockHeader *protocol.Block
-	blockHeader = blockHeader.Decode(payload)
+	blockHeader = blockHeader.DecodeHeader(payload)
 	BlockHeaderChan <- blockHeader
 }
 
