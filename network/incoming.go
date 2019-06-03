@@ -7,6 +7,7 @@ import (
 
 var (
 	Uptodate      = false
+	BlockIn       = make(chan *protocol.Block)
 	BlockHeaderIn = make(chan *protocol.Block)
 	iplistChan    = make(chan string, p2p.MIN_MINERS)
 
@@ -23,6 +24,13 @@ var (
 func processIncomingMsg(p *peer, header *p2p.Header, payload []byte) {
 	switch header.TypeID {
 	//BROADCAST
+	case p2p.BLOCK_BRDCST:
+		//Prevent channel from blocking. Otherwise the client cannot proceed updating the headers!
+		if Uptodate {
+			blockBrdcst(p, payload)
+		} else {
+			logger.Println("Broadcasted block not processed.")
+		}
 	case p2p.BLOCK_HEADER_BRDCST:
 		//Prevent channel from blocking. Otherwise the client cannot proceed updating the headers!
 		if Uptodate {

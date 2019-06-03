@@ -17,9 +17,11 @@ var (
 	peers      peersStruct
 	register   = make(chan *peer)
 	disconnect = make(chan *peer)
+	TypeID     uint8
 )
 
-func Init() {
+func Init(typeid uint8) {
+	TypeID = typeid
 	logger = util.InitLogger()
 	peers.minerConns = make(map[*peer]bool)
 
@@ -27,7 +29,7 @@ func Init() {
 	// TODO Enable again
 	//go checkHealthService()
 
-	p, err := initiateNewClientConnection(util.Config.BootstrapIpport)
+	p, err := initiateNewConnection(util.Config.BootstrapIpport, TypeID)
 	if err != nil {
 		logger.Fatal("Initiating new network connection failed: ", err)
 	}
@@ -35,7 +37,7 @@ func Init() {
 	go minerConn(p)
 }
 
-func initiateNewClientConnection(dial string) (*peer, error) {
+func initiateNewConnection(dial string, typeID uint8) (*peer, error) {
 	var conn net.Conn
 
 	//Open up a tcp dial and instantiate a peer struct, wait for adding it to the peerStruct before we finalize
@@ -51,7 +53,7 @@ func initiateNewClientConnection(dial string) (*peer, error) {
 	p := newPeer(conn, strings.Split(dial, ":")[1])
 
 	localPort, _ := strconv.Atoi(util.Config.Thisclient.Port)
-	packet, err := p2p.PrepareHandshake(p2p.CLIENT_PING, localPort)
+	packet, err := p2p.PrepareHandshake(typeID, localPort)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +62,7 @@ func initiateNewClientConnection(dial string) (*peer, error) {
 
 	//Wait for the other party to finish the handshake with the corresponding message
 	header, _, err := rcvData(p)
-	if err != nil || header.TypeID != p2p.CLIENT_PONG {
+	if err != nil || header.TypeID != p2p.GetPongID(typeID) {
 		return nil, errors.New(fmt.Sprintf("Failed to complete network handshake: %v", err))
 	}
 

@@ -7,6 +7,12 @@ import (
 	"strconv"
 )
 
+func blockBrdcst(p *peer, payload []byte) {
+	var block *protocol.Block
+	block = block.Decode(payload)
+	BlockIn <- block
+}
+
 func blockHeaderBrdcst(p *peer, payload []byte) {
 	var blockHeader *protocol.Block
 	blockHeader = blockHeader.DecodeHeader(payload)
@@ -14,9 +20,9 @@ func blockHeaderBrdcst(p *peer, payload []byte) {
 }
 
 func blockRes(p *peer, payload []byte) {
-	var blockHeader *protocol.Block
-	blockHeader = blockHeader.Decode(payload)
-	BlockChan <- blockHeader
+	var block *protocol.Block
+	block = block.Decode(payload)
+	BlockChan <- block
 }
 
 func blockHeaderRes(p *peer, payload []byte) {

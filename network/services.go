@@ -14,7 +14,7 @@ func checkHealthService() {
 		numberOfRetry := 0
 
 		if !peers.contains(util.Config.BootstrapIpport) {
-			p, err := initiateNewClientConnection(util.Config.BootstrapIpport)
+			p, err := initiateNewConnection(util.Config.BootstrapIpport, TypeID)
 			if p == nil || err != nil {
 				logger.Printf("%v\n", err)
 			} else {
@@ -32,7 +32,7 @@ func checkHealthService() {
 		select {
 		//iplistChan gets filled with every incoming neighborRes, they're consumed here.
 		case ipaddr := <-iplistChan:
-			p, err := initiateNewClientConnection(ipaddr)
+			p, err := initiateNewConnection(ipaddr, TypeID)
 			if err != nil {
 				logger.Printf("%v\n", err)
 			}
