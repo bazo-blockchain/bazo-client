@@ -16,7 +16,7 @@ var (
 func Init() {
 	logger = util.InitLogger()
 
-	logger.Printf("%v\n\n", "Starting REST...")
+	logger.Printf("%v %v\n\n", "Starting REST. Listening on port", util.Config.Thisclient.Port)
 
 	router := mux.NewRouter()
 	getEndpoints(router)
